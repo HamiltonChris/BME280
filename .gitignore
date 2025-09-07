@@ -1,1 +1,3 @@
 .vscode
+examples/arduino/bme280.cpp
+examples/arduino/bme280.h
