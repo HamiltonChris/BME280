@@ -40,7 +40,7 @@ void setup() {
 }
 
 void loop() {
-  if (!status)
+  if (status)
   {
     status = bme280_read_all(&bme280, &pressure, &humidity, &temperature);
     if (!status)
