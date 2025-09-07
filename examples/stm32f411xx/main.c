@@ -73,8 +73,9 @@ void i2c_receive(uint8_t address, uint8_t* data, uint8_t length);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-	uint32_t pressure, humidity;
-	int32_t temperature;
+	uint32_t pressure = 0;
+  uint32_t humidity = 0;
+	int32_t temperature = 0;
 	uint8_t length = 0;
 	char user_data[100];
 	bme280_t bme280;
@@ -109,7 +110,7 @@ int main(void)
   MX_USART2_UART_Init();
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
-  bme280_init(&bme280);
+  int8_t status = bme280_init(&bme280);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -119,11 +120,20 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  bme280_read_all(&bme280, &pressure, &humidity, &temperature);
-	  sprintf((char*)user_data, "Pressure: %d.%02d Pa, Temperature: %d.%02d degrees C, Humidity %d.%03d%%\r\n", pressure >> 8, (pressure & 0xFF) * 100 >> 8, temperature/100, temperature%100, humidity >> 10, (humidity &0x3FF) * 1000 >> 10);
-	  length = strlen((const char*)user_data);
-	  HAL_UART_Transmit(&huart2, (uint8_t *)user_data, length, HAL_MAX_DELAY);
-	  HAL_Delay(1000);
+	  status = bme280_read_all(&bme280, &pressure, &humidity, &temperature);
+    if (!status)
+    {
+      sprintf((char*)user_data, "Error reading sensor\r\n");
+      length = strlen((const char*)user_data);
+	    HAL_UART_Transmit(&huart2, (uint8_t *)user_data, length, HAL_MAX_DELAY);
+    }
+    else
+    {
+      sprintf((char*)user_data, "Pressure: %d.%02d Pa, Temperature: %d.%02d degrees C, Humidity %d.%03d%%\r\n", pressure >> 8, (pressure & 0xFF) * 100 >> 8, temperature/100, temperature%100, humidity >> 10, (humidity &0x3FF) * 1000 >> 10);
+      length = strlen((const char*)user_data);
+      HAL_UART_Transmit(&huart2, (uint8_t *)user_data, length, HAL_MAX_DELAY);
+    }
+    HAL_Delay(1000);
   }
   /* USER CODE END 3 */
 }

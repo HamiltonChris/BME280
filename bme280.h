@@ -108,8 +108,8 @@ typedef struct bme280_s {
     int32_t fine_temperature;
 } bme280_t;
 
-void bme280_init(bme280_t* config);
-void bme280_read_all(bme280_t* config, uint32_t* pressure, uint32_t* humidity, int32_t* temperature);
+int8_t bme280_init(bme280_t* config);
+int8_t bme280_read_all(bme280_t* config, uint32_t* pressure, uint32_t* humidity, int32_t* temperature);
 
 
 #endif // BME280_H

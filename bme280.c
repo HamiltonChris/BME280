@@ -15,9 +15,9 @@ static int32_t compensate_temperature(bme280_t* config, int32_t adc_T);
 static uint32_t compensate_presure(const bme280_t* config, int32_t adc_P);
 static uint32_t compensate_humidity(const bme280_t* config, int32_t adc_H);
 
-void bme280_init(bme280_t* config)
+int8_t bme280_init(bme280_t* config)
 {
-    uint8_t chip_id;
+    uint8_t chip_id = 0;
     uint8_t reg_address = BME280_ID_REG;
 
     // read chip ID
@@ -27,7 +27,8 @@ void bme280_init(bme280_t* config)
     // check chip ID equals what is expected
     if (chip_id != BME280_CHIP_ID)
     {
-
+        // Error with BME280
+        return -1;
     }
 
     // get compensation values
@@ -35,16 +36,28 @@ void bme280_init(bme280_t* config)
 
     // make configurations
     write_configuration(config);
+
+    return 0;
 }
 
-void bme280_read_all(bme280_t* config, uint32_t* pressure, uint32_t* humidity, int32_t* temperature)
+int8_t bme280_read_all(bme280_t* config, uint32_t* pressure, uint32_t* humidity, int32_t* temperature)
 {
-    int32_t raw_pressure, raw_temperature;
-    int16_t raw_humidity;
+    int32_t raw_pressure = 0;
+    int32_t raw_temperature = 0;
+    int16_t raw_humidity = 0;
+
+    if (!config || !config->send || !config->receive)
+    {
+        // Error with configuration struct
+        return -1;
+    }
+
     burst_read(config, &raw_pressure, &raw_temperature, &raw_humidity);
     *temperature = compensate_temperature(config, raw_temperature);
     *pressure = compensate_presure(config, raw_pressure);
     *humidity = compensate_humidity(config, raw_humidity);
+
+    return 0;
 }
 
 static void read_calibration_data(bme280_t* config)
@@ -127,12 +140,11 @@ static void burst_read(bme280_t* config, int32_t* raw_pressure, int32_t* raw_tem
 // This must be run first before compensate_pressure and compensate_humidity
 static int32_t compensate_temperature(bme280_t* config, int32_t adc_T)
 {
-    int32_t var1, var2, temperature;
-    var1 = (((adc_T >> 3) - ((int32_t)config->dig_T1 << 1)) * ((int32_t)config->dig_T2)) >> 11;
-    var2 = (((((adc_T >> 4) - ((int32_t)config->dig_T1)) * ((adc_T >> 4) - ((int32_t)config->dig_T1))) >> 12) *
+    int32_t var1 = (((adc_T >> 3) - ((int32_t)config->dig_T1 << 1)) * ((int32_t)config->dig_T2)) >> 11;
+    int32_t var2 = (((((adc_T >> 4) - ((int32_t)config->dig_T1)) * ((adc_T >> 4) - ((int32_t)config->dig_T1))) >> 12) *
             ((int32_t)config->dig_T3)) >> 14;
     config->fine_temperature = var1 + var2;
-    temperature = (config->fine_temperature * 5 + 128) >> 8;
+    int32_t temperature = (config->fine_temperature * 5 + 128) >> 8;
     return temperature;
 }
 
@@ -140,9 +152,8 @@ static int32_t compensate_temperature(bme280_t* config, int32_t adc_T)
 // Output value of "24674867" represents 24674867/256 = 96386.2 Pa
 static uint32_t compensate_presure(const bme280_t* config, int32_t adc_P)
 {
-    int64_t var1, var2, pressure;
-    var1 = ((int64_t)config->fine_temperature) - 128000;
-    var2 = var1 * var1 * (int64_t)config->dig_P6;
+    int64_t var1 = ((int64_t)config->fine_temperature) - 128000;
+    int64_t var2 = var1 * var1 * (int64_t)config->dig_P6;
     var2 += ((int64_t)config->dig_P5) << 17;
     var2 += ((int64_t)config->dig_P4) << 35;
     var1 = ((var1 * var1 * (int64_t)config->dig_P3) >> 8) + ((var1 * (int64_t)config->dig_P2) << 12);
@@ -151,7 +162,7 @@ static uint32_t compensate_presure(const bme280_t* config, int32_t adc_P)
     {
         return 0; //avoid exception caused by division by zero
     }
-    pressure = 1048576 - adc_P;
+    int64_t pressure = 1048576 - adc_P;
     pressure = (((pressure << 31) - var2) * 3125) / var1;
     var1 = (((int64_t)config->dig_P9) * (pressure >> 13) * (pressure >> 13)) >> 25;
     var2 = (((int64_t)config->dig_P8) * pressure) >> 19;

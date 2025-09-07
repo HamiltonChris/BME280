@@ -10,6 +10,7 @@ uint32_t humidity = 0;
 int32_t temperature = 0;
 char user_data[100];
 uint8_t chip_id = 0;
+int8_t status = 0;
 
 void setup() {
   Serial.begin(9600);
@@ -26,19 +27,35 @@ void setup() {
 	bme280.filter = FILTER_OFF;
 	bme280.mode = NORMAL;
 
-  bme280_init(&bme280);
-  Serial.print("Initialization Complete\n");
-  
-  Serial.print("Test BME280\n");
+  status = bme280_init(&bme280);
+  if (status)
+  {
+    Serial.print("Error initializing driver\n");
+  }
+  else
+  {
+    Serial.print("Initialization Complete\n");
+    Serial.print("Test BME280\n");
+  }
 }
 
 void loop() {
-  bme280_read_all(&bme280, &pressure, &humidity, &temperature);
-  sprintf((char*)user_data, "Pressure: %d.%02d Pa, Temperature: %d.%02d degrees C, Humidity %d.%03d%%\r\n",
-    pressure >> 8, (pressure & 0xFF) * 100 >> 8, temperature / 100, temperature % 100,
-    humidity >> 10, (humidity &0x3FF) * 1000 >> 10);
+  if (!status)
+  {
+    status = bme280_read_all(&bme280, &pressure, &humidity, &temperature);
+    if (!status)
+    {
+      Serial.print("Error with config structure.");
+    }
+    else
+    {
+      sprintf((char*)user_data, "Pressure: %d.%02d Pa, Temperature: %d.%02d degrees C, Humidity %d.%03d%%\r\n",
+        pressure >> 8, (pressure & 0xFF) * 100 >> 8, temperature / 100, temperature % 100,
+        humidity >> 10, (humidity &0x3FF) * 1000 >> 10);
 
-  Serial.print(user_data);
+      Serial.print(user_data);
+    }
+  }
   delay(1000);
 }
 
