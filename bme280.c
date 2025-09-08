@@ -8,7 +8,7 @@
 
 #include "bme280.h"
 
-static void burst_read(bme280_t* config, int32_t* raw_pressure, int32_t* raw_temperature, int16_t* raw_humidity);
+static void burst_read(bme280_t* config, int32_t* raw_pressure, int32_t* raw_temperature, int32_t* raw_humidity);
 static void read_calibration_data(bme280_t* config);
 static void write_configuration(const bme280_t* config);
 static int32_t compensate_temperature(bme280_t* config, int32_t adc_T);
@@ -44,7 +44,7 @@ int8_t bme280_read_all(bme280_t* config, uint32_t* pressure, uint32_t* humidity,
 {
     int32_t raw_pressure = 0;
     int32_t raw_temperature = 0;
-    int16_t raw_humidity = 0;
+    int32_t raw_humidity = 0;
 
     if (!config || !config->send || !config->receive)
     {
@@ -98,8 +98,8 @@ static void read_calibration_data(bme280_t* config)
     config->dig_H1 = data_buffer[24];
     config->dig_H2 = data_buffer[25] | (int16_t)data_buffer[26] << 8;
     config->dig_H3 = data_buffer[27];
-    config->dig_H4 = ((int16_t)data_buffer[28] << 4) | (data_buffer[29] & 0x0F);
-    config->dig_H5 = (data_buffer[29] & 0xF0) | ((int16_t)data_buffer[30] << 4);
+    config->dig_H4 = ((int8_t)data_buffer[28] << 4) | (data_buffer[29] & 0x0F);
+    config->dig_H5 = (data_buffer[29] >> 4) | ((int8_t)data_buffer[30] << 4);
     config->dig_H6 = data_buffer[31];
 }
 
@@ -123,7 +123,7 @@ static void write_configuration(const bme280_t* config)
     config->send(BME280_I2C_ADDRESS, data_buffer, 2);
 }
 
-static void burst_read(bme280_t* config, int32_t* raw_pressure, int32_t* raw_temperature, int16_t* raw_humidity)
+static void burst_read(bme280_t* config, int32_t* raw_pressure, int32_t* raw_temperature, int32_t* raw_humidity)
 {
     uint8_t data_buffer[BME280_DATA_LENGTH];
     uint8_t reg_address = BME280_PRESS_MSB_REG;
@@ -144,7 +144,7 @@ static int32_t compensate_temperature(bme280_t* config, int32_t adc_T)
     int32_t var2 = (((((adc_T >> 4) - ((int32_t)config->dig_T1)) * ((adc_T >> 4) - ((int32_t)config->dig_T1))) >> 12) *
             ((int32_t)config->dig_T3)) >> 14;
     config->fine_temperature = var1 + var2;
-    int32_t temperature = (config->fine_temperature * 5 + 128) >> 8;
+    int32_t temperature = (config->fine_temperature * 5 + 128) / 256;
     return temperature;
 }
 
